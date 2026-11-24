@@ -85,6 +85,28 @@
     </xs:complexContent>
   </xs:complexType>
 
+  <!-- cursor、claude、codex 是訂閱 CLI。其餘 provider/model 走 AI Gateway。 -->
+  <xs:simpleType name="subscriptionCli">
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="cursor"/>
+      <xs:enumeration value="claude"/>
+      <xs:enumeration value="codex"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="subscriptionCliModel">
+    <xs:restriction base="xs:token">
+      <xs:pattern value="(cursor|claude|codex)/[^/\s]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="gatewayModel">
+    <xs:restriction base="xs:token">
+      <xs:pattern value="[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._:-]*"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="llmModel">
+    <xs:union memberTypes="subscriptionCli subscriptionCliModel gatewayModel"/>
+  </xs:simpleType>
+
   <xs:complexType name="llmCell">
     <xs:sequence>
       <xs:group ref="commentMarkers" minOccurs="0" maxOccurs="unbounded"/>
@@ -100,7 +122,11 @@
       </xs:sequence>
     </xs:sequence>
     <xs:attribute name="name" type="nonEmptyToken" use="required"/>
-    <xs:attribute name="model" type="nonEmptyToken" use="required"/>
+    <xs:attribute name="model" type="llmModel" use="required">
+      <xs:annotation>
+        <xs:documentation>cursor、claude 或 codex 使用該訂閱 CLI 的預設模型。cursor/名稱、claude/名稱、codex/名稱指定該 CLI 的模型。這三種都不使用 key；未登入時在終端機引導登入，完成後繼續執行。其他 provider/model 則呼叫 AI Gateway。</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
     <xs:attribute name="static" type="xs:boolean" default="false">
       <xs:annotation>
         <xs:documentation>供 AI planner 使用。true 代表不分析此 cell；不影響執行器是否執行。</xs:documentation>
@@ -108,22 +134,22 @@
     </xs:attribute>
     <xs:attribute name="key" type="nonEmptyToken" use="optional">
       <xs:annotation>
-        <xs:documentation>模型憑證的引用。省略時使用 runner 的預設憑證。</xs:documentation>
+        <xs:documentation>只給 AI Gateway 的 provider/model 使用，引用環境變數裡的 API 金鑰。省略時用 runner 的預設憑證。cursor、claude、codex 不使用這個屬性。</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="max-output-tokens" type="xs:positiveInteger" use="optional">
       <xs:annotation>
-        <xs:documentation>生成 token 的上限。對應 AI Gateway OpenResponses 的 max_output_tokens。</xs:documentation>
+        <xs:documentation>生成 token 的上限，只送給 AI Gateway。訂閱 CLI 使用該工具自己的預設值。</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="temperature" type="samplingTemperature" use="optional">
       <xs:annotation>
-        <xs:documentation>抽樣溫度。對應 AI Gateway OpenResponses 的 temperature，runner 依模型檢查支援情況。</xs:documentation>
+        <xs:documentation>抽樣溫度，只送給 AI Gateway。訂閱 CLI 使用該工具自己的預設值。</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="reasoning-effort" type="nonEmptyToken" use="optional">
       <xs:annotation>
-        <xs:documentation>推理強度，例如 low、medium 或 high。對應 AI Gateway OpenResponses 的 reasoning.effort，可用值由選用的模型決定。</xs:documentation>
+        <xs:documentation>推理強度，例如 low、medium 或 high，只送給 AI Gateway。訂閱 CLI 使用該工具自己的預設值。</xs:documentation>
       </xs:annotation>
     </xs:attribute>
   </xs:complexType>

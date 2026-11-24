@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workflow>
+  <code name="fetch" lang="typescript"><![CDATA[
+export default function () {
+  return { job: { title: "Frontend Engineer", remote: "Worldwide" } };
+}
+  ]]></code>
+  <llm name="judge" model="cursor">
+    <prompt>Return a JSON object with decision and reason. Job: {{ fetch.return.job }}</prompt>
+    <output><![CDATA[
+{"type":"object","properties":{"decision":{"type":"string"},"reason":{"type":"string"}},"required":["decision","reason"],"additionalProperties":false}
+    ]]></output>
+  </llm>
+</workflow>

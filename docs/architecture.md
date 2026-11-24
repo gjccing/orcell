@@ -1,4 +1,4 @@
-# Orcell v0.0.1 architecture
+# Orcell v0.0.3 architecture
 
 ## Scope
 
@@ -20,7 +20,7 @@ CLI
            │  ├─ stdin: context snapshot
            │  ├─ stdout/stderr: user output and errors
            │  └─ fd 3: return + state changes + context access events
-           ├─ LLM Runner (Vercel AI Gateway HTTP API)
+           ├─ LLM Runner (subscription CLI, or Vercel AI Gateway)
            └─ <cwd>/.workflow/<timestamp>-<id>.log (JSON Lines)
 ```
 
@@ -51,6 +51,6 @@ CLI
 - No cross-run persistent State, scheduling, parallelism, retry, run cancellation, sandbox, or execution timeout for Code Cells.
 - No transactional rollback of file/DB/network side effects.
 - `<description>` and comment markers are non-executable; `static` is planner metadata only.
-- LLM calls require an API key in the process environment. `examples/llm.xml` reads `AI_GATEWAY_API_KEY`.
+- An LLM cell calls Cursor Agent, Claude Code, or Codex when `model` is `cursor`, `claude`, or `codex` (optionally `cursor/name` and the same for the other two). If that CLI is not signed in, a terminal run starts its login and continues afterward. Any other `provider/model` calls Vercel AI Gateway and needs an API key in the process environment. `examples/llm.xml` reads `AI_GATEWAY_API_KEY`. A finished call writes a `usage` event to the run log with input, output, and total tokens.
 - Logs contain Context values and output. Do not commit `.workflow/`.
 - Local relative JS/TS module imports from the original XML directory are not remapped in this MVP; package imports from the environment's `node_modules` work through standard Node resolution.

@@ -1,6 +1,6 @@
 # Orcell
 
-XML-defined workflows made of independent **Code Cells** and **LLM Cells**. Early-development TypeScript CLI, v0.0.1.
+XML-defined workflows made of independent **Code Cells** and **LLM Cells**. Early-development TypeScript CLI, v0.0.3.
 
 ## Requirements
 
@@ -36,12 +36,21 @@ CLI usage errors return exit code 2; validation/execution errors return 1; succe
 - [`examples/versions.xml`](examples/versions.xml): one JavaScript cell on Node.js 22.9.0 and one TypeScript cell on Node.js 22.23.5. The first run downloads 22.23.5.
 - [`examples/dependencies.xml`](examples/dependencies.xml): two JavaScript cells with matching npm dependencies; a shared cached environment gets prepared lazily on first use.
 - [`examples/llm.xml`](examples/llm.xml): Vercel AI Gateway LLM cell with templating and JSON Schema output validation.
+- [`examples/cursor.xml`](examples/cursor.xml): the same judgment, calling the Cursor Agent subscription CLI.
+- [`examples/codex.xml`](examples/codex.xml): the same judgment, calling the Codex subscription CLI.
 
-To run the LLM example:
+To run the LLM example through Vercel AI Gateway:
 
 ```bash
 export AI_GATEWAY_API_KEY='your-key'
 orcell run examples/llm.xml
+```
+
+`model` selects the backend. `cursor`, `claude`, and `codex` call that subscription CLI (`agent`, `claude`, or `codex`). A slash form such as `cursor/composer-2` selects a model. These cells do not read `key`, and they ignore `temperature`, `max-output-tokens`, and `reasoning-effort`. If the CLI is not signed in and the run is attached to a terminal, Orcell starts that CLI's own login and continues after it succeeds. Any other `provider/model` calls AI Gateway. After each LLM call, the run log records a `usage` event with `inputTokens`, `outputTokens`, and `totalTokens`.
+
+```bash
+orcell run examples/cursor.xml
+orcell run examples/codex.xml
 ```
 
 ## JavaScript / TypeScript loader layout
@@ -52,7 +61,7 @@ XML `lang` must be the full name: `lang="javascript"` or `lang="typescript"`. Ab
 - `src/loaders/ts.ts` — TypeScript transpilation to ESM.
 - `src/loaders/environment.ts` — shared lazy Node.js environment/cache and npm dependencies.
 
-Both languages use the same process worker. No Docker and no other language runtimes in v0.0.1.
+Both languages use the same process worker. No Docker and no other language runtimes in v0.0.3.
 
 `code.version` is an optional **Node.js runtime version for both JavaScript and TypeScript cells** (for example, `22.14.0`). The XSD only checks that the value is nonempty; the loader requires `major.minor.patch`. Omit it to use the Node that is running Orcell. Set it to run that cell on that release; a different release is downloaded from nodejs.org into `.workflow/runtimes/node/<version>/` on first use. The TypeScript compiler version is selected internally by the TypeScript loader and cannot be specified by `code.version`.
 
@@ -91,6 +100,5 @@ Detailed architecture and IPC: [docs/architecture.md](docs/architecture.md).
 
 The current `validate` and `run` path stays as it is until a design is chosen.
 
-1. Let an LLM cell call local Claude Code and Codex. Tests and local runs should not have to spend AI Gateway credits.
-2. Add a workflow loop. Cells run once, in document order, so one `<llm>` cell is one call. A loop is needed to judge one item at a time instead of placing every item in a single prompt.
-3. Share one environment among code cells whose Node.js `version` and `dependencies` are compatible ranges, not only exact matches.
+1. Add a workflow loop. Cells run once, in document order, so one `<llm>` cell is one call. A loop is needed to judge one item at a time instead of placing every item in a single prompt.
+2. Share one environment among code cells whose Node.js `version` and `dependencies` are compatible ranges, not only exact matches.

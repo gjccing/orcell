@@ -96,7 +96,7 @@ async function openValidated(path: string): Promise<XmlDocument> {
   }
 }
 
-/** Validate well-formedness and the v0.0.1 XSD contract. */
+/** Validate well-formedness and the v0.0.3 XSD contract. */
 export async function validateWorkflow(path: string): Promise<void> {
   const document = await openValidated(path);
   document.dispose();

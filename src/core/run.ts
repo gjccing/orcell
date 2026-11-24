@@ -20,7 +20,7 @@ export async function runWorkflow(path: string): Promise<unknown> {
       await logger.write("cell-start", { cell: cell.name, kind: cell.kind });
       result = cell.kind === "code"
         ? await runCodeCell(cell, wf, workflowPath, loader, logger)
-        : await runLlmCell(cell, wf);
+        : await runLlmCell(cell, wf, logger);
       wf.recordReturn(cell.name, result);
       if (cell.kind === "llm") await logger.write("return", { cell: cell.name, value: result });
       await logger.write("cell-end", { cell: cell.name });

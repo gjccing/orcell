@@ -1,6 +1,6 @@
 {
   "name": "orcell",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "description": "Orcell: XML-defined code and LLM cell workflow CLI",
   "type": "module",

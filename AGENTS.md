@@ -2,7 +2,7 @@
 
 ## Intent
 
-Orcell is a cell-based XML workflow engine, not a visual editor. Each workflow is a sequence of isolated code and LLM cells. Version 0.0.1 exposes **only** two CLI commands: `orcell validate <file>` and `orcell run <file>`.
+Orcell is a cell-based XML workflow engine, not a visual editor. Each workflow is a sequence of isolated code and LLM cells. Version 0.0.3 exposes **only** two CLI commands: `orcell validate <file>` and `orcell run <file>`.
 
 ## Non-negotiable behavior
 
@@ -20,8 +20,8 @@ Orcell is a cell-based XML workflow engine, not a visual editor. Each workflow i
 - `src/core`: run context, orchestration, expression resolver, logging.
 - `src/loaders/js.ts`: JavaScript loader; `src/loaders/ts.ts`: TypeScript loader.
 - `src/loaders/environment.ts`: shared lazy Node.js environment and dependency cache.
-- Do not introduce Docker or other language runtimes into v0.0.1.
-- `src/runners`: execute code in child processes, call LLM API.
+- Do not introduce Docker or other language runtimes into v0.0.3.
+- `src/runners`: execute code in child processes, call a subscription CLI or the AI Gateway.
 - `examples`: small runnable workflows.
 
 ## Acceptance criteria
