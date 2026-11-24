@@ -52,10 +52,9 @@ XML `lang` must be the full name: `lang="javascript"` or `lang="typescript"`. Ab
 - `src/loaders/ts.ts` — TypeScript transpilation to ESM.
 - `src/loaders/environment.ts` — shared lazy Node.js environment/cache and npm dependencies.
 
-Both languages run with the installed Node.js version and use the same process worker.
-No Docker and no other language runtimes in v0.0.1.
+Both languages use the same process worker. No Docker and no other language runtimes in v0.0.1.
 
-`code.version` is an optional **Node.js runtime version for both JavaScript and TypeScript cells** (for example, `22.14.0`). The XSD only checks that the value is nonempty; the loader requires `major.minor.patch`. Omit it to use the Node that is running Orcell. Set it to run that cell on that release; a different release is downloaded from nodejs.org into `.workflow/runtimes/node/<version>/`. The TypeScript compiler version is selected internally by the TypeScript loader and cannot be specified by `code.version`.
+`code.version` is an optional **Node.js runtime version for both JavaScript and TypeScript cells** (for example, `22.14.0`). The XSD only checks that the value is nonempty; the loader requires `major.minor.patch`. Omit it to use the Node that is running Orcell. Set it to run that cell on that release; a different release is downloaded from nodejs.org into `.workflow/runtimes/node/<version>/` on first use. The TypeScript compiler version is selected internally by the TypeScript loader and cannot be specified by `code.version`.
 
 ## Runtime files
 
@@ -74,7 +73,7 @@ A workflow run stores environment and logs in the directory where `orcell` is ex
         └── cells/<code-sha256>.mjs
 ```
 
-Environment identity is based on the Node runtime, normalized dependencies, platform and architecture. JavaScript and TypeScript cells can share one environment; TypeScript transpilation uses its own code cache key. **Cells with compatible configurations reuse the same environment**. Each cell execution itself still uses a fresh OS process.
+An environment is reused only when the Node.js version, platform, architecture, and normalized dependency specs match exactly. JavaScript and TypeScript cells can share that environment; TypeScript transpilation has its own code cache key. Each cell execution still uses a fresh OS process.
 
 By default, Code Cells run with the invoking user's permissions. Only run trusted XML workflows and package dependencies.
 
@@ -86,21 +85,12 @@ npm test
 npm run build
 ```
 
-Detailed architecture, IPC and limitations: [docs/architecture.md](docs/architecture.md).
+Detailed architecture and IPC: [docs/architecture.md](docs/architecture.md).
 
-### Important limitations
+## Later
 
-v0.0.1 implements the basic JS/TS and LLM runner paths, but requires local end-to-end testing after installing dependencies. A `version` other than the Node running Orcell is downloaded from nodejs.org on first use. TypeScript compiler selection stays internal to its loader. Python, background scheduling, parallelism, process pooling, execution timeout, sandboxing and GUI are not implemented.
+The current `validate` and `run` path stays as it is until a design is chosen.
 
-The test environment in which this archive was created did **not** have npm registry access. Therefore build/integration tests could not be completed there. XML examples and XSD are validated separately.
-
-## GitHub
-
-The repository has not been created remotely. After extracting the ZIP, create it from this folder using GitHub CLI:
-
-```bash
-git init -b main
-git add .
-git commit -m "chore: initialize orcell v0.0.1"
-gh repo create gjccing/orcell --private --source=. --remote=origin --push
-```
+1. Let an LLM cell call local Claude Code and Codex. Tests and local runs should not have to spend AI Gateway credits.
+2. Add a workflow loop. Cells run once, in document order, so one `<llm>` cell is one call. A loop is needed to judge one item at a time instead of placing every item in a single prompt.
+3. Share one environment among code cells whose Node.js `version` and `dependencies` are compatible ranges, not only exact matches.

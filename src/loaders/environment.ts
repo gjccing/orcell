@@ -125,7 +125,7 @@ export class EnvironmentLoader {
     // JS and TS use the same Node/npm environment; transpilation is cell-specific.
     // Cache by the actual execution environment, not the cell source language.
     // TODO: share one environment across cells with compatible Node version and dependency ranges.
-    // Today the key is an exact match. See TODO.md.
+    // Today the key is an exact match. See README.md.
     const canonical = canonicalJson({
       runtime: definition.runtime,
       platform: definition.platform,

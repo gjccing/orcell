@@ -15,6 +15,7 @@ export async function runWorkflow(path: string): Promise<unknown> {
   let result: unknown;
   await logger.write("run-start", { workflow: workflowPath, cells: cells.length });
   try {
+    // TODO: a workflow loop so one LLM cell can judge one item at a time. See README.md.
     for (const cell of cells) {
       await logger.write("cell-start", { cell: cell.name, kind: cell.kind });
       result = cell.kind === "code"

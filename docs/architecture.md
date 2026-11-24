@@ -27,7 +27,7 @@ CLI
 ## Isolation and caching
 
 - Environment cache key is SHA-256 of canonicalized Node runtime version, operating system, architecture, and normalized dependency specifications. JS and TS may share a Node environment; code compilation is cached separately by source, language, and compiler version.
-- The first cell to use an environment creates it lazily. Compatible cells reuse it without another `npm install`.
+- The first cell to use an environment creates it lazily. Cells whose runtime, platform, architecture, and dependency specs match exactly reuse it without another `npm install`. Range compatibility is later work.
 - Dependencies resolve through the environment-local `node_modules`; compiled cell modules live **inside** that environment so Node ESM resolution works.
 - The environment is cached, but the process is **not**. Every cell invocation launches a new Node child process; module singletons are not reused.
 - `package-lock.json` records the versions actually installed. Cache creation isn't yet concurrency-safe against simultaneous separate CLI processes preparing the same environment.
@@ -44,12 +44,13 @@ CLI
 
 ## MVP limitations
 
+- Cells run once, in document order. There is no workflow loop, so one `<llm>` cell is one model call.
 - Only `lang="javascript"` and `lang="typescript"` are accepted (no `js` or `ts` aliases). Python and multi-runtime support are not present.
 - Per-cell dependency install uses npm and needs access to the npm registry (unless packages are cached). Install scripts run with the invoking user's permissions.
 - No TypeScript full type-check of cell source, no automatic transpilation of imported TS files.
 - No cross-run persistent State, scheduling, parallelism, retry, run cancellation, sandbox, or execution timeout for Code Cells.
 - No transactional rollback of file/DB/network side effects.
 - `<description>` and comment markers are non-executable; `static` is planner metadata only.
-- LLM calls require a configured API key and were not exercised in the offline test environment.
+- LLM calls require an API key in the process environment. `examples/llm.xml` reads `AI_GATEWAY_API_KEY`.
 - Logs contain Context values and output. Do not commit `.workflow/`.
 - Local relative JS/TS module imports from the original XML directory are not remapped in this MVP; package imports from the environment's `node_modules` work through standard Node resolution.

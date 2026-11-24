@@ -37,9 +37,9 @@ After `npm install && npm run build`:
 
 ## Known gaps
 
-- A cell `version` selects that Node.js release. When it differs from the Node running Orcell, the official build is downloaded into `.workflow/runtimes/node/<version>/`. The TypeScript compiler version still belongs to its loader.
-- Only JavaScript/TypeScript code runners exist. Node environment package install not verified in the offline authoring environment.
-- LLM API invocation hasn't been exercised with a real key.
+- Environment reuse is an exact match of Node.js version, platform, architecture, and dependency specs. Compatible ranges are later work.
+- No workflow loop. Each cell runs once, so one `<llm>` cell is one model call.
+- Only JavaScript/TypeScript code runners exist.
 - No concurrent cache preparation lock, code process timeout, sandbox, imported local TS compilation, parallelism, or persistence across runs.
 
 When changing this project, first preserve a working `validate` + `run` path, and keep the CLI scope minimal.
