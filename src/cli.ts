@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
 import { runWorkflow } from "./core/run.js";
-import { validateWorkflow } from "./xml/validator.js";
+import { validateWorkflow } from "./xml/workflow.js";
 
 const [command, ...args] = process.argv.slice(2);
 if (!(["validate", "run"].includes(command ?? "")) || args.length !== 1) {
@@ -10,8 +10,8 @@ if (!(["validate", "run"].includes(command ?? "")) || args.length !== 1) {
 } else {
   const path = resolve(args[0]);
   try {
-    await validateWorkflow(path);
     if (command === "validate") {
+      await validateWorkflow(path);
       console.log(`Valid XML/XSD: ${path}`);
     } else {
       const result = await runWorkflow(path);

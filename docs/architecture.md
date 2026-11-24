@@ -13,7 +13,7 @@ CLI
         └─ Orchestrator (sequential)
            ├─ Workflow Context (per run)
            ├─ Environment Cache (lazy) + js.ts / ts.ts language loaders
-           │  └─ Environment cache .workflow/environments/<sha256>/
+           │  └─ Environment cache <cwd>/.workflow/environments/<sha256>/
            │     ├─ package.json, optional package-lock.json, node_modules/
            │     └─ cells/<code-sha256>.mjs
            ├─ Code Runner (fresh child process per invocation)
@@ -21,7 +21,7 @@ CLI
            │  ├─ stdout/stderr: user output and errors
            │  └─ fd 3: return + state changes + context access events
            ├─ LLM Runner (Vercel AI Gateway HTTP API)
-           └─ .workflow/<timestamp>-<id>.log (JSON Lines)
+           └─ <cwd>/.workflow/<timestamp>-<id>.log (JSON Lines)
 ```
 
 ## Isolation and caching
@@ -31,7 +31,7 @@ CLI
 - Dependencies resolve through the environment-local `node_modules`; compiled cell modules live **inside** that environment so Node ESM resolution works.
 - The environment is cached, but the process is **not**. Every cell invocation launches a new Node child process; module singletons are not reused.
 - `package-lock.json` records the versions actually installed. Cache creation isn't yet concurrency-safe against simultaneous separate CLI processes preparing the same environment.
-- `version` specifies the Node.js runtime for **both** JavaScript and TypeScript cells. The loader validates format and checks against the locally installed Node.js; switching versions automatically is a later feature. The TypeScript compiler is fixed by the TypeScript loader.
+- `version` specifies the Node.js runtime for **both** JavaScript and TypeScript cells. The loader requires `major.minor.patch`. The Node running Orcell is used when the attribute is omitted or names that same release; any other release is downloaded from nodejs.org into `.workflow/runtimes/node/<version>/` and used for that cell and its `npm install`. The TypeScript compiler is fixed by the TypeScript loader.
 
 ## Workflow Context
 
@@ -46,7 +46,7 @@ CLI
 
 - Only `lang="javascript"` and `lang="typescript"` are accepted (no `js` or `ts` aliases). Python and multi-runtime support are not present.
 - Per-cell dependency install uses npm and needs access to the npm registry (unless packages are cached). Install scripts run with the invoking user's permissions.
-- No custom Node version download, no TypeScript full type-check of cell source, no automatic transpilation of imported TS files.
+- No TypeScript full type-check of cell source, no automatic transpilation of imported TS files.
 - No cross-run persistent State, scheduling, parallelism, retry, run cancellation, sandbox, or execution timeout for Code Cells.
 - No transactional rollback of file/DB/network side effects.
 - `<description>` and comment markers are non-executable; `static` is planner metadata only.

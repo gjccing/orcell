@@ -32,12 +32,12 @@ After `npm install && npm run build`:
 2. Invalid XML or invalid XSD attribute exits nonzero without executing code.
 3. `orcell run examples/hello.xml` prints a count of 2.
 4. `orcell run examples/dependencies.xml` installs dependencies once per compatible environment (npm network required first time).
-5. A run creates `.workflow/<timestamp>-<id>.log` and reuses `.workflow/environments/<hash>/` on subsequent executions.
+5. A run creates `.workflow/<timestamp>-<id>.log` in the current working directory and reuses `.workflow/environments/<hash>/` on subsequent executions.
 6. `npm test` passes.
 
 ## Known gaps
 
-- `version` verifies the installed Node.js runtime for JavaScript and TypeScript; TypeScript compiler version belongs to its loader. Automatic version provisioning is not implemented.
+- A cell `version` selects that Node.js release. When it differs from the Node running Orcell, the official build is downloaded into `.workflow/runtimes/node/<version>/`. The TypeScript compiler version still belongs to its loader.
 - Only JavaScript/TypeScript code runners exist. Node environment package install not verified in the offline authoring environment.
 - LLM API invocation hasn't been exercised with a real key.
 - No concurrent cache preparation lock, code process timeout, sandbox, imported local TS compilation, parallelism, or persistence across runs.

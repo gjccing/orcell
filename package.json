@@ -1,6 +1,6 @@
 {
   "name": "orcell",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "Orcell: XML-defined code and LLM cell workflow CLI",
   "type": "module",
@@ -17,7 +17,6 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@xmldom/xmldom": "^0.9.8",
     "ajv": "^8.17.1",
     "libxml2-wasm": "^0.7.1",
     "typescript": "^5.9.2"

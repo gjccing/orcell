@@ -33,6 +33,7 @@ CLI usage errors return exit code 2; validation/execution errors return 1; succe
 ## Examples
 
 - [`examples/hello.xml`](examples/hello.xml): two TypeScript cells exchanging state and return values.
+- [`examples/versions.xml`](examples/versions.xml): one JavaScript cell on Node.js 22.9.0 and one TypeScript cell on Node.js 22.23.5. The first run downloads 22.23.5.
 - [`examples/dependencies.xml`](examples/dependencies.xml): two JavaScript cells with matching npm dependencies; a shared cached environment gets prepared lazily on first use.
 - [`examples/llm.xml`](examples/llm.xml): Vercel AI Gateway LLM cell with templating and JSON Schema output validation.
 
@@ -54,15 +55,16 @@ XML `lang` must be the full name: `lang="javascript"` or `lang="typescript"`. Ab
 Both languages run with the installed Node.js version and use the same process worker.
 No Docker and no other language runtimes in v0.0.1.
 
-`code.version` is an optional **Node.js runtime version for both JavaScript and TypeScript cells** (for example, `22.14.0`). The XSD only checks that the value is nonempty; the loader checks the format and whether that version is installed. The TypeScript compiler version is selected internally by the TypeScript loader and cannot be specified by `code.version`. The current loader does not automatically install or switch Node.js versions.
+`code.version` is an optional **Node.js runtime version for both JavaScript and TypeScript cells** (for example, `22.14.0`). The XSD only checks that the value is nonempty; the loader requires `major.minor.patch`. Omit it to use the Node that is running Orcell. Set it to run that cell on that release; a different release is downloaded from nodejs.org into `.workflow/runtimes/node/<version>/`. The TypeScript compiler version is selected internally by the TypeScript loader and cannot be specified by `code.version`.
 
 ## Runtime files
 
-A workflow run stores environment and logs **next to the workflow XML**, under `.workflow/`:
+A workflow run stores environment and logs in the directory where `orcell` is executed, under `.workflow/`:
 
 ```text
-examples/.workflow/
+.workflow/
 ├── 2026-...-....log
+├── runtimes/node/<version>/   # official Node.js build when code.version differs
 └── environments/
     └── <environment-sha256>/
         ├── package.json
@@ -88,7 +90,7 @@ Detailed architecture, IPC and limitations: [docs/architecture.md](docs/architec
 
 ### Important limitations
 
-v0.0.1 implements the basic JS/TS and LLM runner paths, but requires local end-to-end testing after installing dependencies. `version` checks the locally installed Node.js runtime rather than downloading other versions; TypeScript compiler selection stays internal to its loader. Python, background scheduling, parallelism, process pooling, execution timeout, sandboxing and GUI are not implemented.
+v0.0.1 implements the basic JS/TS and LLM runner paths, but requires local end-to-end testing after installing dependencies. A `version` other than the Node running Orcell is downloaded from nodejs.org on first use. TypeScript compiler selection stays internal to its loader. Python, background scheduling, parallelism, process pooling, execution timeout, sandboxing and GUI are not implemented.
 
 The test environment in which this archive was created did **not** have npm registry access. Therefore build/integration tests could not be completed there. XML examples and XSD are validated separately.
 

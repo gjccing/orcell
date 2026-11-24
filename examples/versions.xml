@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workflow>
+  <description static="true">JavaScript and TypeScript cells run on different Node.js versions. The first run of 22.23.5 downloads that runtime.</description>
+  <code name="js" lang="javascript" version="22.9.0"><![CDATA[
+export default function (wf) {
+  const version = process.versions.node;
+  console.log(`javascript ${version}`);
+  wf.setState("fromJs", version);
+  return version;
+}
+  ]]></code>
+  <code name="ts" lang="typescript" version="22.23.5"><![CDATA[
+export default function (wf: {
+  getState(key: string): unknown;
+  getReturn(name: string): string;
+}) {
+  const version = process.versions.node;
+  console.log(`typescript ${version}`);
+  return { javascript: wf.getReturn("js"), typescript: version, state: wf.getState("fromJs") };
+}
+  ]]></code>
+</workflow>

@@ -22,10 +22,18 @@ export class WorkflowContext {
     return process.env[key];
   }
 
-  snapshot(): { state: Record<string, unknown>; returns: Record<string, unknown[]> } {
+  snapshot(): {
+    state: Record<string, unknown>;
+    returns: Record<string, unknown[]>;
+  } {
     return {
       state: { ...this.state },
-      returns: Object.fromEntries(Object.entries(this.returns).map(([name, values]) => [name, [...values]])),
+      returns: Object.fromEntries(
+        Object.entries(this.returns).map(([name, values]) => [
+          name,
+          [...values],
+        ]),
+      ),
     };
   }
 

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, writeFile, readdir } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, writeFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -8,8 +8,8 @@ import { normalizeDependencies, environmentDefinition, selectLoader } from '../d
 
 const cli = resolve('dist/cli.js');
 
-function invoke(...args) {
-  return spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', timeout: 20000 });
+function invoke(command, file, cwd = process.cwd()) {
+  return spawnSync(process.execPath, [cli, command, file], { encoding: 'utf8', timeout: 20000, cwd });
 }
 
 test('normalizes dependency order and validates map syntax', () => {
@@ -51,9 +51,28 @@ test('XSD accepts nonempty version strings; Node.js loader validates them', asyn
     assert.equal(invoke('validate', file).status, 0, `XSD should not reject version: ${value}`);
   }
   assert.equal(environmentDefinition({ ...cell, version: process.versions.node }).runtime, `node@${process.versions.node}`);
+  assert.equal(environmentDefinition({ ...cell }).runtime, `node@${process.versions.node}`);
+  assert.equal(environmentDefinition({ ...cell, version: '20.11.1' }).runtime, 'node@20.11.1');
   assert.throws(() => environmentDefinition({ ...cell, version: 'latest' }), /invalid Node\.js version/);
-  assert.throws(() => environmentDefinition({ ...cell, version: '5.9.3' }), /requests Node\.js/);
-  assert.throws(() => environmentDefinition({ ...cell, lang: 'javascript', version: '5.9.3' }), /requests Node\.js/);
+  assert.throws(() => environmentDefinition({ ...cell, version: '5.9' }), /invalid Node\.js version/);
+  assert.throws(() => environmentDefinition({ ...cell, version: 'v5.9.3' }), /invalid Node\.js version/);
+});
+
+test('an explicit Node.js version is the process that runs the cell', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'orcell-node-'));
+  const version = '99.0.1';
+  const binDir = join(dir, '.workflow', 'runtimes', 'node', version, 'bin');
+  await mkdir(binDir, { recursive: true });
+  const nodePath = join(binDir, 'node');
+  await writeFile(nodePath, `#!/bin/sh
+exec "${process.execPath}" -e 'require("node:fs").writeSync(3, JSON.stringify({ value: "node@${version}" }))'
+`);
+  await chmod(nodePath, 0o755);
+  const workflow = join(dir, 'versioned.xml');
+  await writeFile(workflow, `<workflow><code name="x" lang="javascript" version="${version}">export default () => 1</code></workflow>`);
+  const run = invoke('run', workflow, dir);
+  assert.equal(run.status, 0, `stderr: ${run.stderr}`);
+  assert.match(run.stdout, /node@99\.0\.1/);
 });
 
 test('run executes cells sequentially, commits state, and reuses environment', async () => {
@@ -67,7 +86,7 @@ test('run executes cells sequentially, commits state, and reuses environment', a
       export default (wf) => ({ state: wf.getState('n'), previous: wf.getReturn('first') });
     ]]></code>
   </workflow>`);
-  const run = invoke('run', workflow);
+  const run = invoke('run', workflow, dir);
   assert.equal(run.status, 0, `stderr: ${run.stderr}`);
   assert.match(run.stdout, /"state": 9/);
   assert.match(run.stdout, /"previous": 8/);
@@ -92,6 +111,17 @@ test('language-specific loaders compile JS and TS separately', () => {
   assert.doesNotMatch(compiled, /: number/);
 });
 
+test('comment markers are excluded from executable source', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'orcell-test-'));
+  const workflow = join(dir, 'annotated.xml');
+  await writeFile(workflow, `<workflow>
+    <code name="x" lang="javascript"><comment-start id="a"/><![CDATA[export default () => 2;]]><comment-end id="a">not code {{</comment-end></code>
+  </workflow>`);
+  const run = invoke('run', workflow, dir);
+  assert.equal(run.status, 0, `stderr: ${run.stderr}`);
+  assert.match(run.stdout, /^2\n$/);
+});
+
 test('JS and TS cells share a compatible Node environment', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orcell-test-'));
   const workflow = join(dir, 'mixed.xml');
@@ -99,7 +129,7 @@ test('JS and TS cells share a compatible Node environment', async () => {
     <code name="js" lang="javascript"><![CDATA[export default (wf) => {wf.setState('a', 4); return 4;}]]></code>
     <code name="ts" lang="typescript"><![CDATA[export default (wf: any): number => wf.getState('a') + 1;]]></code>
   </workflow>`);
-  const run = invoke('run', workflow);
+  const run = invoke('run', workflow, dir);
   assert.equal(run.status, 0, `stderr: ${run.stderr}`);
   const dirs = await readdir(join(dir, '.workflow', 'environments'));
   assert.equal(dirs.length, 1);

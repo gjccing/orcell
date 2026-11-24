@@ -1,15 +1,16 @@
 import { appendFile, mkdir } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { workflowDir } from "./paths.js";
 
 /** JSONL run log. File is deliberately ignored by Git; values can be sensitive. */
 export class RunLogger {
   readonly path: string;
   private pending: Promise<void> = Promise.resolve();
 
-  constructor(workflowPath: string) {
+  constructor() {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    this.path = join(resolve(dirname(workflowPath), ".workflow"), `${stamp}-${randomUUID().slice(0, 8)}.log`);
+    this.path = join(workflowDir(), `${stamp}-${randomUUID().slice(0, 8)}.log`);
   }
 
   write(event: string, details: Record<string, unknown> = {}): Promise<void> {

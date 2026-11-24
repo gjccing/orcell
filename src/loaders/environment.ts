@@ -1,9 +1,11 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 import type { CodeCell } from "../core/types.js";
 import { jsLoader } from "./js.js";
+import { workflowDir } from "../core/paths.js";
+import { nodeExecutable } from "./node-runtime.js";
 import { tsLoader } from "./ts.js";
 import type { CodeLanguageLoader } from "./types.js";
 
@@ -21,6 +23,7 @@ export interface PreparedEnvironment {
   hash: string;
   path: string;
   definition: EnvironmentDefinition;
+  execPath: string;
 }
 
 function sha256(value: string): string {
@@ -74,15 +77,10 @@ export function environmentDefinition(cell: CodeCell): EnvironmentDefinition {
   if (version && !/^\d+\.\d+\.\d+$/.test(version)) {
     throw new Error(`Cell '${cell.name}' has an invalid Node.js version '${version}' (expected major.minor.patch)`);
   }
-  if (version && version !== process.versions.node) {
-    throw new Error(
-      `Cell '${cell.name}' requests Node.js '${version}', but this installation provides '${process.versions.node}'. Version switching is not yet supported.`,
-    );
-  }
   return {
     lang: loader.lang,
     version,
-    runtime: `node@${process.versions.node}`,
+    runtime: `node@${version ?? process.versions.node}`,
     compiler: loader.compiler,
     platform: process.platform,
     architecture: process.arch,
@@ -90,11 +88,22 @@ export function environmentDefinition(cell: CodeCell): EnvironmentDefinition {
   };
 }
 
-function runNpm(cwd: string): Promise<void> {
+function runNpm(cwd: string, nodeExec: string): Promise<void> {
+  const bundled = nodeExec !== process.execPath;
+  const npmCli = process.platform === "win32"
+    ? join(dirname(nodeExec), "node_modules", "npm", "bin", "npm-cli.js")
+    : join(dirname(nodeExec), "..", "lib", "node_modules", "npm", "bin", "npm-cli.js");
+  const command = bundled ? nodeExec : (process.platform === "win32" ? "npm.cmd" : "npm");
+  const args = bundled
+    ? [npmCli, "install", "--no-audit", "--no-fund", "--package-lock=true"]
+    : ["install", "--no-audit", "--no-fund", "--package-lock=true"];
+  const env = bundled
+    ? { ...process.env, PATH: `${dirname(nodeExec)}${delimiter}${process.env.PATH ?? ""}` }
+    : process.env;
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(process.platform === "win32" ? "npm.cmd" : "npm", [
-      "install", "--no-audit", "--no-fund", "--package-lock=true",
-    ], { cwd, stdio: ["ignore", "inherit", "inherit"], shell: process.platform === "win32" });
+    const child = spawn(command, args, {
+      cwd, env, stdio: ["ignore", "inherit", "inherit"], shell: !bundled && process.platform === "win32",
+    });
     child.once("error", reject);
     child.once("close", (code, signal) => {
       if (code === 0) resolvePromise();
@@ -110,12 +119,13 @@ async function fileExists(path: string): Promise<boolean> {
 
 /** On-demand, configuration-keyed environment shared by compatible cells in a workflow directory. */
 export class EnvironmentLoader {
-  constructor(private readonly workflowPath: string) {}
-
   async prepare(cell: CodeCell): Promise<PreparedEnvironment> {
     const definition = environmentDefinition(cell);
+    const execPath = await nodeExecutable(definition.version);
     // JS and TS use the same Node/npm environment; transpilation is cell-specific.
     // Cache by the actual execution environment, not the cell source language.
+    // TODO: share one environment across cells with compatible Node version and dependency ranges.
+    // Today the key is an exact match. See TODO.md.
     const canonical = canonicalJson({
       runtime: definition.runtime,
       platform: definition.platform,
@@ -123,11 +133,11 @@ export class EnvironmentLoader {
       dependencies: definition.dependencies,
     });
     const hash = sha256(canonical);
-    const path = resolve(dirname(this.workflowPath), ".workflow", "environments", hash);
+    const path = resolve(workflowDir(), "environments", hash);
     const ready = join(path, ".ready.json");
     if (await fileExists(ready)) {
       const previous = JSON.parse(await readFile(ready, "utf8")) as { definition?: string };
-      if (previous.definition === canonical) return { hash, path, definition };
+      if (previous.definition === canonical) return { hash, path, definition, execPath };
     }
 
     await mkdir(path, { recursive: true });
@@ -143,14 +153,14 @@ export class EnvironmentLoader {
 
     // Avoid npm startup for dependency-free environments.
     if (Object.keys(dependencies).length > 0) {
-      await runNpm(path);
+      await runNpm(path, execPath);
       // npm install writes package-lock.json, which locks resolved transitive versions.
       if (!(await fileExists(join(path, "package-lock.json")))) {
         throw new Error(`Environment '${hash}' did not produce a package-lock.json`);
       }
     }
     await writeFile(ready, JSON.stringify({ definition: canonical, createdAt: new Date().toISOString() }) + "\n");
-    return { hash, path, definition };
+    return { hash, path, definition, execPath };
   }
 }
 

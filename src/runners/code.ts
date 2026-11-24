@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { delimiter, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CodeCell } from "../core/types.js";
 import type { WorkflowContext } from "../core/context.js";
@@ -25,10 +26,13 @@ export async function runCodeCell(
   const worker = fileURLToPath(new URL("./code-worker.js", import.meta.url));
 
   const result = await new Promise<CodeResult>((resolvePromise, reject) => {
-    const child = spawn(process.execPath, [worker, modulePath], {
+    const env = environment.execPath === process.execPath
+      ? process.env
+      : { ...process.env, PATH: `${dirname(environment.execPath)}${delimiter}${process.env.PATH ?? ""}` };
+    const child = spawn(environment.execPath, [worker, modulePath], {
       cwd: environment.path,
       stdio: ["pipe", "pipe", "pipe", "pipe"],
-      env: process.env,
+      env,
     });
     let control = "";
     let done = false;
