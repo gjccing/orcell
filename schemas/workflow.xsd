@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:simpleType name="nonEmptyToken">
+    <xs:restriction base="xs:token">
+      <xs:minLength value="1"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="codeLanguage">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="javascript"/>
+      <xs:enumeration value="typescript"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="samplingTemperature">
+    <xs:restriction base="xs:decimal">
+      <xs:minInclusive value="0"/>
+      <xs:maxInclusive value="2"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- 使用語意化的 Priority 名稱，避免依組織自行解讀 P0–P4。 -->
+  <xs:simpleType name="commentPriority">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="critical"/>
+      <xs:enumeration value="high"/>
+      <xs:enumeration value="medium"/>
+      <xs:enumeration value="low"/>
+      <xs:enumeration value="informational"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- 起點沒有內容，終點包含註解文字；兩者由相同 id 配對。 -->
+  <xs:complexType name="commentStart">
+    <xs:attribute name="id" type="nonEmptyToken" use="required"/>
+    <xs:attribute name="priority" type="commentPriority" default="medium">
+      <xs:annotation>
+        <xs:documentation>語意化優先級：critical、high、medium、low、informational；預設 medium，不影響 Workflow 執行。</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="commentEnd">
+    <xs:simpleContent>
+      <xs:extension base="xs:string">
+        <xs:attribute name="id" type="nonEmptyToken" use="required"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:group name="commentMarkers">
+    <xs:choice>
+      <xs:element name="comment-start" type="commentStart"/>
+      <xs:element name="comment-end" type="commentEnd"/>
+    </xs:choice>
+  </xs:group>
+
+  <!-- Runner 只串接文字與 CDATA；comment-start/end 及其內文不參與執行。 -->
+  <xs:complexType name="annotatedText" mixed="true">
+    <xs:group ref="commentMarkers" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:complexType>
+
+  <xs:complexType name="codeCell">
+    <xs:complexContent mixed="true">
+      <xs:extension base="annotatedText">
+        <xs:attribute name="name" type="nonEmptyToken" use="required"/>
+        <xs:attribute name="lang" type="codeLanguage" use="required"/>
+        <xs:attribute name="version" type="nonEmptyToken" use="optional">
+          <xs:annotation>
+            <xs:documentation>JavaScript 與 TypeScript 均指定 Node.js Runtime 版本。XSD 不檢查版本格式或可用性，交由 Loader 判斷。TypeScript Compiler 版本由 Loader 管理。</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="dependencies" type="xs:string" use="optional">
+          <xs:annotation>
+            <xs:documentation>JSON 物件，鍵是套件名稱，值是版本選擇字串。</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="static" type="xs:boolean" default="false">
+          <xs:annotation>
+            <xs:documentation>供 AI planner 使用。true 代表不分析此 cell；不影響執行器是否執行。</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="llmCell">
+    <xs:sequence>
+      <xs:group ref="commentMarkers" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="prompt" type="annotatedText"/>
+      <xs:group ref="commentMarkers" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:sequence minOccurs="0">
+        <xs:element name="output" type="annotatedText">
+          <xs:annotation>
+            <xs:documentation>內容為 JSON Schema。省略時回傳模型的純文字。</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:group ref="commentMarkers" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:sequence>
+    <xs:attribute name="name" type="nonEmptyToken" use="required"/>
+    <xs:attribute name="model" type="nonEmptyToken" use="required"/>
+    <xs:attribute name="static" type="xs:boolean" default="false">
+      <xs:annotation>
+        <xs:documentation>供 AI planner 使用。true 代表不分析此 cell；不影響執行器是否執行。</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="key" type="nonEmptyToken" use="optional">
+      <xs:annotation>
+        <xs:documentation>模型憑證的引用。省略時使用 runner 的預設憑證。</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="max-output-tokens" type="xs:positiveInteger" use="optional">
+      <xs:annotation>
+        <xs:documentation>生成 token 的上限。對應 AI Gateway OpenResponses 的 max_output_tokens。</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="temperature" type="samplingTemperature" use="optional">
+      <xs:annotation>
+        <xs:documentation>抽樣溫度。對應 AI Gateway OpenResponses 的 temperature，runner 依模型檢查支援情況。</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="reasoning-effort" type="nonEmptyToken" use="optional">
+      <xs:annotation>
+        <xs:documentation>推理強度，例如 low、medium 或 high。對應 AI Gateway OpenResponses 的 reasoning.effort，可用值由選用的模型決定。</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="descriptionBlock">
+    <xs:complexContent mixed="true">
+      <xs:extension base="annotatedText">
+        <xs:attribute name="static" type="xs:boolean" default="false"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:element name="workflow">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="code" type="codeCell"/>
+        <xs:element name="llm" type="llmCell"/>
+        <xs:element name="description" type="descriptionBlock"/>
+        <xs:group ref="commentMarkers"/>
+      </xs:choice>
+    </xs:complexType>
+
+    <xs:key name="cellNames">
+      <xs:selector xpath="code|llm"/>
+      <xs:field xpath="@name"/>
+    </xs:key>
+    <xs:key name="commentStartIds">
+      <xs:selector xpath=".//comment-start"/>
+      <xs:field xpath="@id"/>
+    </xs:key>
+    <xs:key name="commentEndIds">
+      <xs:selector xpath=".//comment-end"/>
+      <xs:field xpath="@id"/>
+    </xs:key>
+
+    <!-- 兩端 id 各自唯一、互相存在。起點必須早於終點由 Parser 檢查。 -->
+    <xs:keyref name="startHasEnd" refer="commentEndIds">
+      <xs:selector xpath=".//comment-start"/>
+      <xs:field xpath="@id"/>
+    </xs:keyref>
+    <xs:keyref name="endHasStart" refer="commentStartIds">
+      <xs:selector xpath=".//comment-end"/>
+      <xs:field xpath="@id"/>
+    </xs:keyref>
+  </xs:element>
+</xs:schema>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workflow>
+  <description static="true">A two-cell example with cross-cell state and return values.</description>
+  <code name="fetch" lang="typescript"><![CDATA[
+export default function (wf: { setState(key: string, value: unknown): void }) {
+  const jobs = ["Senior Frontend Engineer", "Frontend Platform Engineer"];
+  wf.setState("source", "demo");
+  console.log(`Fetched ${jobs.length} jobs`);
+  return { jobs };
+}
+  ]]></code>
+  <code name="count" lang="typescript"><![CDATA[
+export default function (wf: {
+  getState(key: string): unknown;
+  getReturn(name: string): { jobs: string[] };
+}) {
+  console.log(`Source: ${wf.getState("source")}`);
+  return { count: wf.getReturn("fetch").jobs.length };
+}
+  ]]></code>
+</workflow>

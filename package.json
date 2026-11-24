@@ -1,0 +1,28 @@
+{
+  "name": "orcell",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Orcell: XML-defined code and LLM cell workflow CLI",
+  "type": "module",
+  "bin": {
+    "orcell": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "npm run build && node dist/cli.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "npm run build && node --test tests/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "^0.9.8",
+    "ajv": "^8.17.1",
+    "libxml2-wasm": "^0.7.1",
+    "typescript": "^5.9.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}

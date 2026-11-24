@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workflow>
+  <description>Two cells reuse one dependency environment. This example requires npm network access for its first run.</description>
+  <code name="split" lang="javascript" dependencies='{"lodash-es":"4.17.21"}'><![CDATA[
+import { chunk } from "lodash-es";
+export default function (wf) {
+  const groups = chunk([1, 2, 3, 4, 5], 2);
+  wf.setState("groups", groups);
+  return groups;
+}
+  ]]></code>
+  <code name="count" lang="javascript" dependencies='{"lodash-es":"4.17.21"}'><![CDATA[
+import { flatten } from "lodash-es";
+export default function (wf) {
+  return { items: flatten(wf.getState("groups")).length, prior: wf.getReturn("split") };
+}
+  ]]></code>
+</workflow>
