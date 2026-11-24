@@ -1,0 +1,8 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "orcell: build", "type": "shell", "command": "npm run build", "group": "build" },
+    { "label": "orcell: test", "type": "shell", "command": "npm test", "group": "test" },
+    { "label": "orcell: run example", "type": "shell", "command": "npm run build && node dist/cli.js run examples/hello.xml" }
+  ]
+}
